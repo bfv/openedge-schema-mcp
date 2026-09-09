@@ -1,0 +1,19 @@
+{
+    "name": "ai4openedge",
+    "version": "1.0",
+    "oeversion": "12.8",
+    "graphicalMode": false,
+    "charset": "utf-8",
+    "extraParameters": "-clrnetcore",
+    "buildPath": [
+        { "type": "source", "path": "./src" },
+        { "type": "propath", "path": "." },
+        { "type": "propath", "path": "${DLC}/tty/OpenEdge.Core.pl" },
+        { "type": "propath", "path": "${DLC}/tty/netlib/OpenEdge.Net.pl" }
+    ],
+    "dbConnections": [
+        { "name": "sports2020", "connect": "-db sports2020 -S 10000 -H db", "schemaFile": "./sports2020.df", "aliases": []}
+    ],
+    "buildDirectory": "./bin",
+    "numThreads": 1
+}

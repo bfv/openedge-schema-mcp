@@ -7,7 +7,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-from .schema import SchemaCatalog, inferred_relationships, table_details
+from .schema import SchemaCatalog, table_details
 
 mcp = FastMCP("OpenEdge Schema")
 
@@ -73,10 +73,57 @@ def list_sequences(database: str) -> list[dict[str, object]]:
 
 
 @mcp.tool()
-def find_relationships(database: str, table: str | None = None) -> list[dict[str, str]]:
-    """Find relationships inferred from CAN-FIND validation expressions, not formal foreign keys."""
-    schema = catalog().schema(database)
-    return inferred_relationships(schema, table)
+def find_relationships(
+    database: str, table: str | None = None, direction: str = "both"
+) -> list[dict[str, object]]:
+    """Find configured table relationships, optionally filtered by table and direction."""
+    return catalog().relationships(database, table, direction)
+
+
+@mcp.tool()
+def get_related_tables(database: str, table: str, depth: int = 1) -> list[dict[str, object]]:
+    """Return tables connected to one table by configured relationships."""
+    return catalog().related_tables(database, table, depth)
+
+
+@mcp.tool()
+def find_relationship_path(
+    from_database: str, from_table: str, to_database: str, to_table: str, max_depth: int = 4
+) -> list[dict[str, object]]:
+    """Find the shortest configured relationship path between two tables."""
+    return catalog().relationship_path(from_database, from_table, to_database, to_table, max_depth)
+
+
+@mcp.tool()
+def suggest_relationships(database: str, table: str | None = None) -> list[dict[str, object]]:
+    """Suggest local relationship candidates; review them before adding configuration."""
+    return catalog().suggested_relationships(database, table)
+
+
+@mcp.tool()
+def add_relationship(
+    database: str,
+    from_table: str,
+    from_fields: list[str],
+    to_table: str,
+    to_fields: list[str],
+    to_database: str | None = None,
+    cardinality: str = "many-to-one",
+    name: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Validate and add a relationship to the configured JSON catalog."""
+    return catalog().add_relationship(
+        database,
+        from_table,
+        from_fields,
+        to_table,
+        to_fields,
+        to_database,
+        cardinality,
+        name,
+        description,
+    )
 
 
 @mcp.tool()

@@ -1,7 +1,7 @@
 {
   "servers": {
     "openedge-schema": {
-      "command": "/home/openedge/.local/bin/uv",
+      "command": "uv",
       "args": [
         "run",
         "--directory",
@@ -9,7 +9,8 @@
         "openedge-schema-mcp"
       ],
       "env": {
-        "OPENEDGE_PROJECT_FILE": "${workspaceFolder}/openedge-project.json"
+        "OPENEDGE_PROJECT_FILE": "${workspaceFolder}/openedge-project.json",
+        "OPENEDGE_SCHEMA_RELATIONS_DIR": "${workspaceFolder}/schema-relations"
       }
     }
   }

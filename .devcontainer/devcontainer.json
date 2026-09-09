@@ -1,0 +1,18 @@
+{
+  "name": "OpenEdge Schema MCP",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "uv sync --directory openedge-schema-mcp --extra dev",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/openedge-schema-mcp/.venv/bin/python"
+      },
+      "extensions": [
+        "ms-python.python"
+      ]
+    }
+  }
+}

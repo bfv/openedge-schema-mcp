@@ -1,0 +1,10 @@
+{
+  "database": "sports2020",
+  "relationships": [
+    {
+      "from": { "table": "Order", "fields": ["CustNum"] },
+      "to": { "table": "Customer", "fields": ["CustNum"] },
+      "cardinality": "many-to-one"
+    }
+  ]
+}
