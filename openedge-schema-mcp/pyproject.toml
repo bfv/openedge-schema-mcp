@@ -1,0 +1,23 @@
+[project]
+name = "openedge-schema-mcp"
+version = "0.1.0"
+description = "Read-only MCP server for OpenEdge .df schema files"
+requires-python = ">=3.12"
+dependencies = [
+  "mcp>=1.13,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+openedge-schema-mcp = "openedge_schema_mcp.server:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

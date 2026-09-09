@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "openedge-schema": {
+      "command": "/home/openedge/.local/bin/uv",
+      "args": [
+        "run",
+        "--directory",
+        "${workspaceFolder}/tools/openedge-schema-mcp",
+        "openedge-schema-mcp"
+      ],
+      "env": {
+        "OPENEDGE_PROJECT_FILE": "${workspaceFolder}/openedge-project.json"
+      }
+    }
+  }
+}
