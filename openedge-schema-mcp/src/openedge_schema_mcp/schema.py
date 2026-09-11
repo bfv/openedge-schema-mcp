@@ -488,16 +488,20 @@ def _value_property(block: str, property_name: str) -> str | None:
 def _read_df_text(schema_path: Path) -> str:
     contents = schema_path.read_bytes()
     try:
-        detected_encoding = _detect_df_encoding(contents)
+        source_encoding = _detect_df_encoding(contents) or "utf-8"
     except UnicodeDecodeError as error:
         raise ValueError(f"Schema file contains a non-ASCII cpstream value: {schema_path}") from error
-    encoding = _normalize_df_encoding(detected_encoding or "utf-8")
+    encoding = _normalize_df_encoding(source_encoding)
     try:
         return contents.decode(encoding)
     except LookupError as error:
-        raise ValueError(f"Schema file uses an unsupported cpstream '{encoding}': {schema_path}") from error
+        raise ValueError(
+            f"Schema file uses an unsupported cpstream '{source_encoding}' (normalized as '{encoding}'): {schema_path}"
+        ) from error
     except UnicodeDecodeError as error:
-        raise ValueError(f"Schema file could not be decoded with cpstream '{encoding}': {schema_path}") from error
+        raise ValueError(
+            f"Schema file could not be decoded with cpstream '{source_encoding}' (normalized as '{encoding}'): {schema_path}"
+        ) from error
 
 
 def _detect_df_encoding(contents: bytes) -> str | None:
