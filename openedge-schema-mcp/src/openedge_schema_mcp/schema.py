@@ -487,7 +487,11 @@ def _value_property(block: str, property_name: str) -> str | None:
 
 def _read_df_text(schema_path: Path) -> str:
     contents = schema_path.read_bytes()
-    encoding = _normalize_df_encoding(_detect_df_encoding(contents) or "utf-8")
+    try:
+        detected_encoding = _detect_df_encoding(contents)
+    except UnicodeDecodeError as error:
+        raise ValueError(f"Schema file contains a non-ASCII cpstream value: {schema_path}") from error
+    encoding = _normalize_df_encoding(detected_encoding or "utf-8")
     try:
         return contents.decode(encoding)
     except LookupError as error:
@@ -500,7 +504,7 @@ def _detect_df_encoding(contents: bytes) -> str | None:
     match = re.search(rb"(?im)^cpstream\s*=\s*([^\r\n]+)\s*$", contents)
     if match is None:
         return None
-    return match.group(1).decode("ascii", errors="ignore").strip().strip('"')
+    return match.group(1).decode("ascii").strip().strip('"')
 
 
 def _normalize_df_encoding(encoding: str) -> str:
