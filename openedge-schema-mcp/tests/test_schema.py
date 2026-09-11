@@ -200,6 +200,8 @@ class SchemaCatalogTests(unittest.TestCase):
             schema_file = project_directory / "schema.df"
             schema_file.write_bytes(
                 (
+                    "cpstream=UTF-8\n"
+                    "\n"
                     'ADD TABLE "Cafe"\n'
                     '  DESCRIPTION "Café table"\n'
                     "\n"
