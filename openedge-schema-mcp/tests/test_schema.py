@@ -207,7 +207,7 @@ class SchemaCatalogTests(unittest.TestCase):
                     "\n"
                     ".\n"
                     "PSC\n"
-                    "cpstream=ISO88591\n"
+                    "  cpstream=ISO88591\n"
                     ".\n"
                     "0000000001\n"
                 ).encode("iso-8859-1")
