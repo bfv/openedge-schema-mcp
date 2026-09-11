@@ -193,3 +193,56 @@ class SchemaCatalogTests(unittest.TestCase):
         self.assertFalse(duplicate["created"])
         self.assertEqual(1, len(document["relationships"]))
         self.assertEqual("OrderLine", document["relationships"][0]["from"]["table"])
+
+    def test_reads_df_using_normalized_cpstream_encoding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_directory = Path(directory)
+            schema_file = project_directory / "schema.df"
+            schema_file.write_bytes(
+                (
+                    'ADD TABLE "Cafe"\n'
+                    '  DESCRIPTION "Café table"\n'
+                    "\n"
+                    ".\n"
+                    "PSC\n"
+                    'cpstream="ISO88591"\n'
+                    ".\n"
+                    "0000000001\n"
+                ).encode("iso-8859-1")
+            )
+            project_file = project_directory / "openedge-project.json"
+            project_file.write_text(
+                json.dumps({"dbConnections": [{"name": "demo", "schemaFile": "schema.df"}]}),
+                encoding="utf-8",
+            )
+
+            table = SchemaCatalog(project_file).schema("demo").table("Cafe")
+
+        self.assertEqual("Café table", table.description)
+
+    def test_prefers_last_cpstream_declaration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_directory = Path(directory)
+            schema_file = project_directory / "schema.df"
+            schema_file.write_bytes(
+                (
+                    "cpstream=UTF-8\n"
+                    "\n"
+                    'ADD TABLE "Cafe"\n'
+                    '  DESCRIPTION "Café table"\n'
+                    "\n"
+                    ".\n"
+                    "PSC  cpstream=ISO88591\n"
+                    ".\n"
+                    "0000000001\n"
+                ).encode("iso-8859-1")
+            )
+            project_file = project_directory / "openedge-project.json"
+            project_file.write_text(
+                json.dumps({"dbConnections": [{"name": "demo", "schemaFile": "schema.df"}]}),
+                encoding="utf-8",
+            )
+
+            table = SchemaCatalog(project_file).schema("demo").table("Cafe")
+
+        self.assertEqual("Café table", table.description)
