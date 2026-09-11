@@ -383,7 +383,7 @@ def parse_df(database_name: str, schema_file: Path | str) -> DatabaseSchema:
     """Parse the schema objects represented by OpenEdge ADD statements."""
     schema_path = Path(schema_file)
     try:
-        blocks = re.split(r"\n\s*\n", schema_path.read_text(encoding="utf-8"))
+        blocks = re.split(r"\r?\n\s*\r?\n", _read_df_text(schema_path))
     except FileNotFoundError as error:
         raise ValueError(f"Schema file was not found: {schema_path}") from error
 
@@ -482,3 +482,21 @@ def _quoted_property(block: str, property_name: str) -> str | None:
 def _value_property(block: str, property_name: str) -> str | None:
     match = re.search(rf'\b{re.escape(property_name)}\s+([^\s]+)', block)
     return match.group(1) if match else None
+
+
+def _read_df_text(schema_path: Path) -> str:
+    contents = schema_path.read_bytes()
+    encoding = _detect_df_encoding(contents) or "utf-8"
+    try:
+        return contents.decode(encoding)
+    except LookupError as error:
+        raise ValueError(f"Schema file uses an unsupported cpstream '{encoding}': {schema_path}") from error
+    except UnicodeDecodeError as error:
+        raise ValueError(f"Schema file could not be decoded with cpstream '{encoding}': {schema_path}") from error
+
+
+def _detect_df_encoding(contents: bytes) -> str | None:
+    match = re.search(rb"(?im)^cpstream\s*=\s*([^\r\n]+)\s*$", contents)
+    if match is None:
+        return None
+    return match.group(1).decode("ascii", errors="ignore").strip().strip('"')
