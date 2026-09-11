@@ -487,10 +487,16 @@ def _value_property(block: str, property_name: str) -> str | None:
 
 def _read_df_text(schema_path: Path) -> str:
     contents = schema_path.read_bytes()
-    try:
-        source_encoding = _detect_df_encoding(contents) or "utf-8"
-    except UnicodeDecodeError as error:
-        raise ValueError(f"Schema file contains a non-ASCII cpstream value: {schema_path}") from error
+    raw_encoding = _detect_df_encoding(contents)
+    if raw_encoding is None:
+        source_encoding = "utf-8"
+    else:
+        try:
+            source_encoding = raw_encoding.decode("ascii").strip()
+        except UnicodeDecodeError as error:
+            raise ValueError(
+                f"Schema file has a non-ASCII cpstream declaration {raw_encoding!r}: {schema_path}"
+            ) from error
     encoding = _normalize_df_encoding(source_encoding)
     try:
         return contents.decode(encoding)
@@ -504,14 +510,13 @@ def _read_df_text(schema_path: Path) -> str:
         ) from error
 
 
-def _detect_df_encoding(contents: bytes) -> str | None:
+def _detect_df_encoding(contents: bytes) -> bytes | None:
     matches = list(
         re.finditer(rb'(?i)cpstream\s*=\s*(?:"([^"\r\n]+)"|([^\s"\r\n]+))', contents)
     )
     if not matches:
         return None
-    value = matches[-1].group(1) or matches[-1].group(2)
-    return value.decode("ascii").strip()
+    return (matches[-1].group(1) or matches[-1].group(2)).strip()
 
 
 def _normalize_df_encoding(encoding: str) -> str:
