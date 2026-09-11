@@ -505,10 +505,13 @@ def _read_df_text(schema_path: Path) -> str:
 
 
 def _detect_df_encoding(contents: bytes) -> str | None:
-    matches = list(re.finditer(rb"(?i)cpstream\s*=\s*([^\s\r\n]+)", contents))
+    matches = list(
+        re.finditer(rb'(?i)cpstream\s*=\s*(?:"([^"\r\n]+)"|([^\s"\r\n]+))', contents)
+    )
     if not matches:
         return None
-    return matches[-1].group(1).decode("ascii").strip().strip('"')
+    value = matches[-1].group(1) or matches[-1].group(2)
+    return value.decode("ascii").strip()
 
 
 def _normalize_df_encoding(encoding: str) -> str:
