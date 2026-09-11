@@ -206,8 +206,7 @@ class SchemaCatalogTests(unittest.TestCase):
                     '  DESCRIPTION "Café table"\n'
                     "\n"
                     ".\n"
-                    "PSC\n"
-                    "  cpstream=ISO88591\n"
+                    "PSC  cpstream=ISO88591\n"
                     ".\n"
                     "0000000001\n"
                 ).encode("iso-8859-1")
