@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 import json
@@ -486,7 +487,7 @@ def _value_property(block: str, property_name: str) -> str | None:
 
 def _read_df_text(schema_path: Path) -> str:
     contents = schema_path.read_bytes()
-    encoding = _detect_df_encoding(contents) or "utf-8"
+    encoding = _normalize_df_encoding(_detect_df_encoding(contents) or "utf-8")
     try:
         return contents.decode(encoding)
     except LookupError as error:
@@ -500,3 +501,23 @@ def _detect_df_encoding(contents: bytes) -> str | None:
     if match is None:
         return None
     return match.group(1).decode("ascii", errors="ignore").strip().strip('"')
+
+
+def _normalize_df_encoding(encoding: str) -> str:
+    normalized = encoding.strip()
+    if not normalized:
+        return normalized
+    try:
+        codecs.lookup(normalized)
+        return normalized
+    except LookupError:
+        pass
+
+    compact = re.sub(r"[\s_-]+", "", normalized).casefold()
+    if compact == "utf8":
+        return "utf-8"
+    if match := re.fullmatch(r"iso8859(\d+)", compact):
+        return f"iso-8859-{match.group(1)}"
+    if match := re.fullmatch(r"(?:windows|cp)(\d+)", compact):
+        return f"cp{match.group(1)}"
+    return normalized
