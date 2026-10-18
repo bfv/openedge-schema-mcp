@@ -41,6 +41,24 @@ def describe_table(database: str, table: str) -> dict[str, object]:
 
 
 @mcp.tool()
+def get_table_context(
+    database: str,
+    table: str,
+    relationship_depth: int = 1,
+    include_related_fields: bool = False,
+    max_related_tables: int = 20,
+) -> dict[str, object]:
+    """Return schema details and bounded configured-relationship context for one table."""
+    return catalog().table_context(
+        database,
+        table,
+        relationship_depth,
+        include_related_fields,
+        max_related_tables,
+    )
+
+
+@mcp.tool()
 def find_field(database: str, field: str, table: str | None = None) -> list[dict[str, object]]:
     """Find fields by case-insensitive name, optionally within one table."""
     schema = catalog().schema(database)

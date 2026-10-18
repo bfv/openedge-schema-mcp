@@ -7,6 +7,7 @@ An stdio MCP server that reads the `dbConnections` entries in an OpenEdge `opene
 - `list_databases`
 - `list_tables`
 - `describe_table`
+- `get_table_context` (one table's fields and indexes, plus bounded configured relationship context)
 - `find_field`
 - `list_indexes`
 - `list_sequences`
@@ -36,6 +37,22 @@ By default, add reviewed relationships to `schema-relations/<database>.json`, ne
 ```
 
 Each referenced database, table, and field is validated while loading. `suggest_relationships` only proposes local candidates whose field name and type match a single-field unique target index; it never changes this configuration.
+
+## Table context
+
+`get_table_context` combines the complete schema metadata for a start table with configured relationships and compact metadata for connected tables. It only uses relationships in the reviewed catalog; it does not infer relationships.
+
+```text
+get_table_context(
+	database="sports2020",
+	table="OrderLine",
+	relationship_depth=1,
+	include_related_fields=false,
+	max_related_tables=20,
+)
+```
+
+The response contains `table`, `fields`, `indexes`, `relationships`, and `related_tables`. Related-table metadata includes its name, description, depth, relationship fields, and primary or unique index fields. Set `include_related_fields` to include full field definitions for related tables. `max_related_tables` bounds the response, and `related_tables_truncated` reports when the limit was reached.
 
 ## Development container
 

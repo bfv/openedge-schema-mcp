@@ -40,6 +40,27 @@ class SchemaCatalogTests(unittest.TestCase):
             relationships,
         )
 
+    def test_returns_bounded_table_context_from_configured_relationships(self) -> None:
+        context = self.catalog.table_context("sports2020", "Order", max_related_tables=1)
+
+        self.assertEqual(
+            {
+                "database": "sports2020",
+                "name": "Order",
+                "description": "The order table contains order header information.",
+                "dump_name": "order",
+            },
+            context["table"],
+        )
+        self.assertTrue(any(field["name"] == "CustNum" for field in context["fields"]))
+        self.assertEqual(["Customer"], [table["table"] for table in context["related_tables"]])
+        self.assertEqual("configured", context["relationships"][0]["source"])
+        self.assertFalse(context["related_tables_truncated"])
+
+    def test_rejects_non_positive_related_table_limit(self) -> None:
+        with self.assertRaisesRegex(ValueError, "max_related_tables must be at least 1"):
+            self.catalog.table_context("sports2020", "Order", max_related_tables=0)
+
     def test_suggests_relationship_from_matching_unique_field(self) -> None:
         suggestions = self.catalog.suggested_relationships("sports2020", "Order")
 

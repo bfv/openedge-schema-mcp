@@ -159,6 +159,64 @@ class SchemaCatalog:
                 break
         return related
 
+    def table_context(
+        self,
+        database_name: str,
+        table_name: str,
+        relationship_depth: int = 1,
+        include_related_fields: bool = False,
+        max_related_tables: int = 20,
+    ) -> dict[str, object]:
+        """Return bounded schema and configured-relationship context for one table."""
+        if max_related_tables < 1:
+            raise ValueError("max_related_tables must be at least 1.")
+
+        schema = self.schema(database_name)
+        table = schema.table(table_name)
+        related = self.related_tables(schema.name, table.name, relationship_depth)
+        included_related = related[:max_related_tables]
+
+        related_tables: list[dict[str, object]] = []
+        for related_table in included_related:
+            related_schema = self.schema(str(related_table["database"]))
+            related_definition = related_schema.table(str(related_table["table"]))
+            relationship = related_table["relationship"]
+            related_endpoint = next(
+                endpoint
+                for endpoint in (relationship["from"], relationship["to"])
+                if endpoint["database"].casefold() == related_schema.name.casefold()
+                and endpoint["table"].casefold() == related_definition.name.casefold()
+            )
+            details: dict[str, object] = {
+                "database": related_schema.name,
+                "table": related_definition.name,
+                "description": related_definition.description,
+                "depth": related_table["depth"],
+                "relationship_fields": related_endpoint["fields"],
+                "key_fields": [
+                    {"index": index.name, "fields": index.fields}
+                    for index in related_definition.indexes
+                    if index.primary or index.unique
+                ],
+            }
+            if include_related_fields:
+                details["fields"] = [asdict(field) for field in related_definition.fields]
+            related_tables.append(details)
+
+        return {
+            "table": {
+                "database": schema.name,
+                "name": table.name,
+                "description": table.description,
+                "dump_name": table.dump_name,
+            },
+            "fields": [asdict(field) for field in table.fields],
+            "indexes": [asdict(index) for index in table.indexes],
+            "relationships": [entry["relationship"] for entry in included_related],
+            "related_tables": related_tables,
+            "related_tables_truncated": len(related) > len(included_related),
+        }
+
     def relationship_path(
         self,
         from_database: str,

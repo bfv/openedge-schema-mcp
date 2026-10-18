@@ -155,6 +155,7 @@ The last prompt invokes `add_relationship`. It validates the named databases, ta
 ## Available tools
 
 - `list_databases`, `list_tables`, `describe_table`
+- `get_table_context`, combining a table's full schema metadata with bounded configured relationship context
 - `find_field`, `list_indexes`, `list_sequences`, `search_schema`
 - `find_relationships`, with optional table and direction filtering
 - `get_related_tables`, for direct or deeper relationships
