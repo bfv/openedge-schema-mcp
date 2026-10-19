@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .schema import SchemaCatalog, table_details
 
-mcp = FastMCP("OpenEdge Schema")
+mcp = FastMCP("OpenEdge Schema", "0.4.1")
 
 
 def catalog() -> SchemaCatalog:
