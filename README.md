@@ -125,7 +125,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/bfv/openedge-schema-mcp.git@v0.2.0#subdirectory=openedge-schema-mcp",
+        "git+https://github.com/bfv/openedge-schema-mcp.git@v0.5.2#subdirectory=openedge-schema-mcp",
         "openedge-schema-mcp"
       ],
       "env": {
