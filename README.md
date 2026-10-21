@@ -89,7 +89,32 @@ Set `schemaRelationsDirectory` in `openedge-project.json` to use another directo
 
 `OPENEDGE_SCHEMA_RELATIONS_DIR` overrides this setting, which is useful when each workstation needs a different relationship catalog.
 
-### 3. Configure VS Code from GitHub
+### 3. Compare schema versions
+
+Use `compare_schema_versions` to compare two `.df` exports or the same workspace-relative `.df` file across two Git references. It parses schema exports only; it does not connect to a database or change the working tree.
+
+Compare two files:
+
+```text
+compare_schema_versions(
+  base_schema_file="schema/before.df",
+  target_schema_file="schema/current.df",
+)
+```
+
+Compare a schema file in Git:
+
+```text
+compare_schema_versions(
+  base_ref="main",
+  target_ref="feature/customer-credit-limit",
+  schema_file="schema/current.df",
+)
+```
+
+Provide exactly one of these parameter sets. In Git mode, `schema_file` must be a workspace-relative `.df` path. Optionally set `database` to name the compared schema in the response. The result groups table, field, index, and sequence changes and summarizes `additive_changes`, `potential_data_migrations`, and `breaking_changes`.
+
+### 4. Configure VS Code from GitHub
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create `.vscode/mcp.json` in the project root:
 
@@ -140,7 +165,7 @@ For server development, put the directory containing the server's `pyproject.tom
 }
 ```
 
-### 4. Use the tools from a prompt
+### 5. Use the tools from a prompt
 
 Once VS Code shows the server as running, an assistant can inspect the configured schema. For example:
 
@@ -162,6 +187,7 @@ The last prompt invokes `add_relationship`. It validates the named databases, ta
 - `find_relationship_path`, including paths across databases
 - `suggest_relationships`, for relationship candidates to review
 - `add_relationship`, to validate and add a relationship to the JSON catalog
+- `compare_schema_versions`, to compare two `.df` files or one `.df` file across Git refs
 
 ## Developing the server
 
