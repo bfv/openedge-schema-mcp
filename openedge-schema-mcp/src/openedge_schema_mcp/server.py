@@ -8,6 +8,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from .schema import SchemaCatalog, table_details
+from .schema_diff import compare_schema_versions as _compare_schema_versions
 
 mcp = FastMCP("OpenEdge Schema", "0.4.1")
 
@@ -160,6 +161,26 @@ def search_schema(database: str, query: str) -> list[dict[str, str]]:
             if needle in field_text:
                 matches.append({"kind": "field", "table": table.name, "name": field_definition.name})
     return matches
+
+
+@mcp.tool()
+def compare_schema_versions(
+    base_schema_file: str | None = None,
+    target_schema_file: str | None = None,
+    base_ref: str | None = None,
+    target_ref: str | None = None,
+    schema_file: str | None = None,
+    database: str | None = None,
+) -> dict[str, object]:
+    """Compare two .df files or compare one workspace schema file across Git refs."""
+    return _compare_schema_versions(
+        base_schema_file,
+        target_schema_file,
+        base_ref,
+        target_ref,
+        schema_file,
+        database,
+    )
 
 
 def main() -> None:

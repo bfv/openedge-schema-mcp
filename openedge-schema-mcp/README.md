@@ -17,6 +17,25 @@ An stdio MCP server that reads the `dbConnections` entries in an OpenEdge `opene
 - `suggest_relationships` (candidates to review before configuring)
 - `add_relationship` (validates and adds a relationship to the JSON catalog)
 - `search_schema`
+- `compare_schema_versions` (compares filesystem `.df` files or a workspace `.df` file across Git refs)
+
+`compare_schema_versions` accepts exactly one of these input sets:
+
+```text
+compare_schema_versions(
+    base_schema_file="db/schema/before.df",
+    target_schema_file="db/schema/current.df",
+)
+compare_schema_versions(
+    base_ref="main",
+    target_ref="feature/customer-credit-limit",
+    schema_file="db/schema/current.df",
+)
+```
+
+Git comparisons read schema blobs directly from Git and do not change the working tree.
+The response groups table, field, index, and sequence changes and summarizes their
+additive, potential data-migration, and breaking classifications.
 
 ## Relationships
 

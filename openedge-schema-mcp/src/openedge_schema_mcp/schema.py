@@ -442,10 +442,22 @@ def parse_df(database_name: str, schema_file: Path | str) -> DatabaseSchema:
     """Parse the schema objects represented by OpenEdge ADD statements."""
     schema_path = Path(schema_file)
     try:
-        blocks = re.split(r"\r?\n\s*\r?\n", _read_df_text(schema_path))
+        text = _read_df_text(schema_path)
     except FileNotFoundError as error:
         raise ValueError(f"Schema file was not found: {schema_path}") from error
+    return _parse_df_text(database_name, schema_path, text)
 
+
+def parse_df_contents(
+    database_name: str, contents: bytes, schema_file: Path | str
+) -> DatabaseSchema:
+    """Parse schema bytes obtained from a source other than the filesystem."""
+    schema_path = Path(schema_file)
+    return _parse_df_text(database_name, schema_path, _decode_df_text(contents, schema_path))
+
+
+def _parse_df_text(database_name: str, schema_path: Path, text: str) -> DatabaseSchema:
+    blocks = re.split(r"\r?\n\s*\r?\n", text)
     schema = DatabaseSchema(name=database_name, schema_file=schema_path)
     for block in blocks:
         if match := re.search(r'^ADD TABLE "([^"]+)"', block, re.MULTILINE):
@@ -544,7 +556,10 @@ def _value_property(block: str, property_name: str) -> str | None:
 
 
 def _read_df_text(schema_path: Path) -> str:
-    contents = schema_path.read_bytes()
+    return _decode_df_text(schema_path.read_bytes(), schema_path)
+
+
+def _decode_df_text(contents: bytes, schema_path: Path) -> str:
     raw_encoding = _detect_df_encoding(contents)
     if raw_encoding is None:
         source_encoding = "utf-8"
