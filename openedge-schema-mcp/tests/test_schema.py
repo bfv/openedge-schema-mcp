@@ -35,6 +35,8 @@ class SchemaCatalogTests(unittest.TestCase):
                 "from": {"database": "sports2020", "table": "Order", "fields": ["CustNum"]},
                 "to": {"database": "sports2020", "table": "Customer", "fields": ["CustNum"]},
                 "cardinality": "many-to-one",
+                "name": "order_customer",
+                "description": "Each order belongs to one customer.",
                 "source": "configured",
             },
             relationships,
@@ -55,7 +57,7 @@ class SchemaCatalogTests(unittest.TestCase):
         self.assertTrue(any(field["name"] == "CustNum" for field in context["fields"]))
         self.assertEqual(["Customer"], [table["table"] for table in context["related_tables"]])
         self.assertEqual("configured", context["relationships"][0]["source"])
-        self.assertFalse(context["related_tables_truncated"])
+        self.assertTrue(context["related_tables_truncated"])
 
     def test_rejects_non_positive_related_table_limit(self) -> None:
         with self.assertRaisesRegex(ValueError, "max_related_tables must be at least 1"):

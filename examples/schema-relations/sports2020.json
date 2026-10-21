@@ -2,9 +2,79 @@
   "database": "sports2020",
   "relationships": [
     {
-      "from": { "table": "Order", "fields": ["CustNum"] },
-      "to": { "table": "Customer", "fields": ["CustNum"] },
-      "cardinality": "many-to-one"
+      "from": {
+        "database": "sports2020",
+        "table": "Order",
+        "fields": ["CustNum"]
+      },
+      "to": {
+        "database": "sports2020",
+        "table": "Customer",
+        "fields": ["CustNum"]
+      },
+      "cardinality": "many-to-one",
+      "name": "order_customer",
+      "description": "Each order belongs to one customer."
+    },
+    {
+      "from": {
+        "database": "sports2020",
+        "table": "OrderLine",
+        "fields": ["OrderNum"]
+      },
+      "to": {
+        "database": "sports2020",
+        "table": "Order",
+        "fields": ["OrderNum"]
+      },
+      "cardinality": "many-to-one",
+      "name": "order_line_order",
+      "description": "Each order line belongs to one order; an order can have many order lines."
+    },
+    {
+      "from": {
+        "database": "sports2020",
+        "table": "OrderLine",
+        "fields": ["ItemNum"]
+      },
+      "to": {
+        "database": "sports2020",
+        "table": "Item",
+        "fields": ["ItemNum"]
+      },
+      "cardinality": "many-to-one",
+      "name": "order_line_item",
+      "description": "Each order line references one item; an item can occur on many order lines."
+    },
+    {
+      "from": {
+        "database": "sports2020",
+        "table": "Order",
+        "fields": ["SalesRep"]
+      },
+      "to": {
+        "database": "sports2020",
+        "table": "SalesRep",
+        "fields": ["SalesRep"]
+      },
+      "cardinality": "many-to-one",
+      "name": "order_sales_rep",
+      "description": "Each order is assigned to one sales representative; a sales representative can handle many orders."
+    },
+    {
+      "from": {
+        "database": "sports2020",
+        "table": "Customer",
+        "fields": ["SalesRep"]
+      },
+      "to": {
+        "database": "sports2020",
+        "table": "SalesRep",
+        "fields": ["SalesRep"]
+      },
+      "cardinality": "many-to-one",
+      "name": "customer_sales_rep",
+      "description": "Each customer is assigned to one sales representative; a sales representative can manage many customers."
     }
   ]
 }
