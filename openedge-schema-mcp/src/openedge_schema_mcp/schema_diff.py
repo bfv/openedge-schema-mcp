@@ -191,8 +191,11 @@ def _diff_field(
         classification = "breaking"
         reason = "Changing a field data type can require conversion of existing data."
     elif _character_length_reduced(old, new):
-        classification = "breaking"
-        reason = "Reducing a character field length can truncate existing data."
+        classification = "potential_data_migration"
+        reason = (
+            "Reducing a character field format length does not truncate stored data "
+            "(OpenEdge stores variable length), but can truncate display or input."
+        )
     elif changes.get("mandatory") == {"from": False, "to": True}:
         classification = "potential_data_migration"
         reason = "Making a field mandatory can fail when existing rows have no value."

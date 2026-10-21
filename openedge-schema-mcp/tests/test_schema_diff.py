@@ -101,7 +101,7 @@ class SchemaVersionDiffTests(unittest.TestCase):
         self.assertEqual(["Obsolete"], customer["fields"]["removed"])
         self.assertEqual("breaking", customer["fields"]["removed_classification"])
         self.assertEqual(
-            "breaking",
+            "potential_data_migration",
             next(field for field in customer["fields"]["modified"] if field["name"] == "Address")[
                 "classification"
             ],
@@ -121,8 +121,8 @@ class SchemaVersionDiffTests(unittest.TestCase):
         self.assertEqual(["NextOrder"], result["sequences"]["added"])
         self.assertEqual(["NextLegacy"], result["sequences"]["removed"])
         self.assertEqual(4, result["summary"]["additive_changes"])
-        self.assertEqual(1, result["summary"]["potential_data_migrations"])
-        self.assertEqual(6, result["summary"]["breaking_changes"])
+        self.assertEqual(2, result["summary"]["potential_data_migrations"])
+        self.assertEqual(5, result["summary"]["breaking_changes"])
 
     def test_rejects_incomplete_and_mixed_modes(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires both base_schema_file"):
