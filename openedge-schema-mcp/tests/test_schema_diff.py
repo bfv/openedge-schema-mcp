@@ -10,12 +10,19 @@ from openedge_schema_mcp.schema_diff import compare_schema_versions
 BASE_SCHEMA = '''ADD TABLE "Customer"
   DESCRIPTION "Customers"
 
+ADD TABLE "LegacyTable"
+
 ADD FIELD "CustNum" OF "Customer" AS integer
   INITIAL "1500"
   MANDATORY
 
+ADD FIELD "Address" OF "Customer" AS character
+  FORMAT "x(30)"
+
 ADD FIELD "Name" OF "Customer" AS character
   FORMAT "x(30)"
+
+ADD FIELD "Obsolete" OF "Customer" AS integer
 
 ADD INDEX "CustomerKey" ON "Customer"
   UNIQUE
@@ -25,14 +32,23 @@ ADD INDEX "CustomerKey" ON "Customer"
 ADD SEQUENCE "NextCustomer"
   INITIAL 1
   INCREMENT 1
+
+ADD SEQUENCE "NextLegacy"
+  INITIAL 1
+  INCREMENT 1
 '''
 
 TARGET_SCHEMA = '''ADD TABLE "Customer"
   DESCRIPTION "Customers"
 
+ADD TABLE "NewTable"
+
 ADD FIELD "CustNum" OF "Customer" AS decimal
   INITIAL "2000"
   MANDATORY
+
+ADD FIELD "Address" OF "Customer" AS character
+  FORMAT "x(20)"
 
 ADD FIELD "PreferredLanguage" OF "Customer" AS character
   FORMAT "x(20)"
@@ -47,6 +63,10 @@ ADD INDEX "CustomerKey" ON "Customer"
   INDEX-FIELD "CustNum"
 
 ADD INDEX "CustomerName" ON "Customer"
+  INDEX-FIELD "Name"
+
+ADD INDEX "CustomerEmail" ON "Customer"
+  UNIQUE
   INDEX-FIELD "Name"
 
 ADD SEQUENCE "NextCustomer"
@@ -78,17 +98,31 @@ class SchemaVersionDiffTests(unittest.TestCase):
         )
         self.assertEqual("breaking", changed_field["classification"])
         self.assertEqual(["PreferredLanguage"], customer["fields"]["added"])
+        self.assertEqual(["Obsolete"], customer["fields"]["removed"])
+        self.assertEqual("breaking", customer["fields"]["removed_classification"])
+        self.assertEqual(
+            "breaking",
+            next(field for field in customer["fields"]["modified"] if field["name"] == "Address")[
+                "classification"
+            ],
+        )
         self.assertEqual(
             "potential_data_migration",
             next(field for field in customer["fields"]["modified"] if field["name"] == "Name")[
                 "classification"
             ],
         )
-        self.assertEqual(["CustomerName"], customer["indexes"]["added"])
+        self.assertEqual(
+            ["CustomerEmail", "CustomerName"], customer["indexes"]["added"]
+        )
+        self.assertEqual(["CustomerEmail"], customer["indexes"]["primary_or_unique"]["added"])
+        self.assertEqual(["LegacyTable"], result["tables"]["removed"])
+        self.assertEqual(["NewTable"], result["tables"]["added"])
         self.assertEqual(["NextOrder"], result["sequences"]["added"])
-        self.assertEqual(3, result["summary"]["additive_changes"])
+        self.assertEqual(["NextLegacy"], result["sequences"]["removed"])
+        self.assertEqual(4, result["summary"]["additive_changes"])
         self.assertEqual(1, result["summary"]["potential_data_migrations"])
-        self.assertEqual(1, result["summary"]["breaking_changes"])
+        self.assertEqual(6, result["summary"]["breaking_changes"])
 
     def test_rejects_incomplete_and_mixed_modes(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires both base_schema_file"):
