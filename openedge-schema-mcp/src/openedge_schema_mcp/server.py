@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from .schema import SchemaCatalog, table_details
 from .schema_diff import compare_schema_versions as _compare_schema_versions
 
-mcp = FastMCP("OpenEdge Schema", "0.4.1")
+mcp = MCPServer("OpenEdge Schema", version="0.5.3")
 
 
 def catalog() -> SchemaCatalog:
