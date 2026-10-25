@@ -1,6 +1,6 @@
 [project]
 name = "openedge-schema-mcp"
-version = "0.2.0"
+dynamic = ["version"]
 description = "MCP server for OpenEdge .df schema files and relationship catalogs"
 requires-python = ">=3.12"
 dependencies = [
@@ -16,8 +16,12 @@ dev = [
 openedge-schema-mcp = "openedge_schema_mcp.server:main"
 
 [build-system]
-requires = ["hatchling>=1.25"]
+requires = ["hatchling>=1.25", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { root = ".." }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

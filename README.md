@@ -125,7 +125,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/bfv/openedge-schema-mcp.git@v0.5.2#subdirectory=openedge-schema-mcp",
+        "git+https://github.com/bfv/openedge-schema-mcp.git@vX.Y.Z#subdirectory=openedge-schema-mcp",
         "openedge-schema-mcp"
       ],
       "env": {
@@ -137,9 +137,9 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
 }
 ```
 
-`OPENEDGE_SCHEMA_RELATIONS_DIR` sets the directory where `add_relationship` creates and updates `<database>.json` files. It overrides `schemaRelationsDirectory` in `openedge-project.json`; remove this environment variable when the project-file setting should control the catalog location. `uvx` downloads and caches the release from the `v0.2.0` Git tag. The tag pin keeps every project on a known server version. Restart the MCP server from the VS Code MCP view after saving this file.
+`OPENEDGE_SCHEMA_RELATIONS_DIR` sets the directory where `add_relationship` creates and updates `<database>.json` files. It overrides `schemaRelationsDirectory` in `openedge-project.json`; remove this environment variable when the project-file setting should control the catalog location. Replace `vX.Y.Z` with a published release tag. Pushing a `vX.Y.Z` tag starts the release workflow, which validates the tag, runs the test suite, and creates the GitHub release. `uvx` downloads and caches the source from that exact tag. Restart the MCP server from the VS Code MCP view after saving this file.
 
-To upgrade, change `@v0.2.0` to the required release tag, such as `@v0.3.0`, then restart the MCP server. Do not point production projects at `main`, because that would allow unreviewed server changes to alter the project setup.
+To upgrade, change `@vX.Y.Z` to the required release tag, then restart the MCP server. Do not point production projects at `main`, because that would allow unreviewed server changes to alter the project setup.
 
 ### Local checkout alternative
 

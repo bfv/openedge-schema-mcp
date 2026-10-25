@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
@@ -10,7 +11,7 @@ from mcp.server.mcpserver import MCPServer
 from .schema import SchemaCatalog, table_details
 from .schema_diff import compare_schema_versions as _compare_schema_versions
 
-mcp = MCPServer("OpenEdge Schema", version="0.5.3")
+mcp = MCPServer("OpenEdge Schema", version=package_version("openedge-schema-mcp"))
 
 
 def catalog() -> SchemaCatalog:
