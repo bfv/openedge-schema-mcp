@@ -20,15 +20,15 @@ my-openedge-project/
 
 ### 1. Configure schema file locations
 
-Export a `.df` file for each database and set its location in the database's `schemaFile` property. There is no global schema-directory setting: every database can have its own schema file location.
-
+Export a `.df` file for each database and set its location in the database's `schemaFile` property. There is no global schema-directory setting: every database can have its own schema file location.<br/>
 ```json
+// openedge-project.json
 {
   "dbConnections": [
     {
       "name": "sports2020",
       "connect": "-db sports2020 -S 10000 -H db",
-      "schemaFile": "./sports2020.df",
+      "schemaFile": "./schema/sports2020.df",
       "aliases": []
     }
   ]
