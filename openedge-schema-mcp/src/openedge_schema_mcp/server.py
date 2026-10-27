@@ -172,6 +172,7 @@ def compare_schema_versions(
     target_ref: str | None = None,
     schema_file: str | None = None,
     database: str | None = None,
+    include_delta_df: bool = False,
 ) -> dict[str, object]:
     """Compare two .df files or compare one workspace schema file across Git refs."""
     return _compare_schema_versions(
@@ -181,6 +182,7 @@ def compare_schema_versions(
         target_ref,
         schema_file,
         database,
+        include_delta_df,
     )
 
 

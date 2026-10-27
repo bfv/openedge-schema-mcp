@@ -90,6 +90,7 @@ class SchemaVersionDiffTests(unittest.TestCase):
             result = compare_schema_versions(str(base_path), str(target_path))
 
         self.assertEqual("files", result["source"]["mode"])
+        self.assertNotIn("delta_df", result)
         self.assertEqual("after", result["database"])
         customer = result["tables"]["modified"][0]
         changed_field = next(field for field in customer["fields"]["modified"] if field["name"] == "CustNum")
@@ -123,6 +124,100 @@ class SchemaVersionDiffTests(unittest.TestCase):
         self.assertEqual(4, result["summary"]["additive_changes"])
         self.assertEqual(2, result["summary"]["potential_data_migrations"])
         self.assertEqual(5, result["summary"]["breaking_changes"])
+
+    def test_generates_data_administration_delta_df(self) -> None:
+        base_content = '''ADD TABLE "logeven"
+
+ADD TABLE "removed_table"
+
+ADD FIELD "cnaamcrea" OF "logeven" AS character
+  FORMAT "X(20)"
+
+ADD FIELD "ruser" OF "logeven" AS character
+
+ADD FIELD "cattr" OF "logeven" AS character
+
+ADD INDEX "old_index" ON "logeven"
+  INDEX-FIELD "cnaamcrea"
+
+ADD SEQUENCE "old_sequence"
+  INITIAL 1
+  INCREMENT 1
+
+ADD SEQUENCE "current_sequence"
+  INITIAL 1
+  INCREMENT 1
+'''
+        target_content = '''ADD TABLE "aatest"
+  AREA "Overig256"
+  FROZEN
+  DUMP-NAME "aatest"
+
+ADD FIELD "id" OF "aatest" AS int64
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  LABEL "id"
+  POSITION 2
+  MAX-WIDTH 8
+  COLUMN-LABEL "id"
+  ORDER 10
+
+ADD TABLE "logeven"
+
+ADD FIELD "cnaamcrea" OF "logeven" AS character
+  FORMAT "X(32)"
+
+ADD FIELD "ruser" OF "logeven" AS int64
+
+ADD INDEX "new_index" ON "logeven"
+  UNIQUE
+  INDEX-FIELD "cnaamcrea"
+
+ADD INDEX "old_index" ON "logeven"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "cnaamcrea"
+
+ADD SEQUENCE "new_sequence"
+  INITIAL 10
+  INCREMENT 1
+
+ADD SEQUENCE "current_sequence"
+  INITIAL 1
+  INCREMENT 5
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            base_path = Path(directory) / "before.df"
+            target_path = Path(directory) / "after.df"
+            base_path.write_text(base_content, encoding="utf-8")
+            target_path.write_text(target_content, encoding="utf-8")
+
+            result = compare_schema_versions(
+                str(base_path), str(target_path), include_delta_df=True
+            )
+
+        delta_df = result["delta_df"]
+        self.assertIsInstance(delta_df, str)
+        self.assertIn('ADD TABLE "aatest"\r\n  AREA "Overig256"\r\n  FROZEN', delta_df)
+        self.assertIn('UPDATE FIELD "cnaamcrea" OF "logeven"\r\n  FORMAT "X(32)"', delta_df)
+        self.assertIn('UPDATE FIELD "ruser" OF "logeven" AS int64', delta_df)
+        self.assertIn('DROP FIELD "cattr" OF "logeven"', delta_df)
+        self.assertIn('DROP INDEX "old_index" ON "logeven"', delta_df)
+        self.assertIn('ADD INDEX "old_index" ON "logeven"', delta_df)
+        self.assertIn('ADD INDEX "new_index" ON "logeven"', delta_df)
+        self.assertIn('UPDATE PRIMARY INDEX "old_index" ON "logeven"', delta_df)
+        self.assertLess(
+          delta_df.index('DROP INDEX "old_index"'),
+          delta_df.index('ADD INDEX "old_index"'),
+        )
+        self.assertIn('DROP TABLE "removed_table"', delta_df)
+        self.assertIn('DROP SEQUENCE "old_sequence"', delta_df)
+        self.assertIn('UPDATE SEQUENCE "current_sequence"\r\n  INCREMENT 5', delta_df)
+        self.assertIn('ADD SEQUENCE "new_sequence"', delta_df)
+        self.assertIn("PSC\r\ncpstream=UTF-8\r\n.\r\n", delta_df)
+        definition_bytes = delta_df.split("PSC\r\n", maxsplit=1)[0].encode("utf-8")
+        footer = int(delta_df.rsplit("\r\n", maxsplit=2)[-2])
+        self.assertEqual(len(definition_bytes), footer)
 
     def test_rejects_incomplete_and_mixed_modes(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires both base_schema_file"):

@@ -20,6 +20,7 @@ my-openedge-project/
 
 ### 1. Configure schema file locations
 
+The Riverside OpenEdge ABL extension is assumed here.<br/>
 Export a `.df` file for each database and set its location in the database's `schemaFile` property. There is no global schema-directory setting: every database can have its own schema file location.<br/>
 ```json
 // openedge-project.json
@@ -113,6 +114,16 @@ compare_schema_versions(
 ```
 
 Provide exactly one of these parameter sets. In Git mode, `schema_file` must be a workspace-relative `.df` path. Optionally set `database` to name the compared schema in the response. The result groups table, field, index, and sequence changes and summarizes `additive_changes`, `potential_data_migrations`, and `breaking_changes`.
+
+Set `include_delta_df=true` to also return a UTF-8 Data Administration delta file in `delta_df`. It contains the required PSC trailer and byte count; it is returned as text and is not written to disk.
+
+```text
+compare_schema_versions(
+  base_schema_file="schema/before.df",
+  target_schema_file="schema/current.df",
+  include_delta_df=true,
+)
+```
 
 ### 4. Configure VS Code from GitHub
 

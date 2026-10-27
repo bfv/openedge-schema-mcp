@@ -32,6 +32,7 @@ def compare_schema_versions(
     target_ref: str | None = None,
     schema_file: str | None = None,
     database: str | None = None,
+    include_delta_df: bool = False,
 ) -> dict[str, object]:
     """Compare two local schema files or one schema path across two Git refs."""
     file_mode = base_schema_file is not None or target_schema_file is not None
@@ -70,7 +71,10 @@ def compare_schema_versions(
             "target": f"{target_ref}:{relative_path}",
         }
 
-    return _diff_schemas(base, target, database_name, source)
+    result = _diff_schemas(base, target, database_name, source)
+    if include_delta_df:
+        result["delta_df"] = _render_delta_df(base, target, result)
+    return result
 
 
 def _workspace_relative_schema_path(schema_file: str) -> str:
@@ -148,6 +152,210 @@ def _diff_schemas(
         "sequences": sequence_diff,
         "summary": summary,
     }
+
+
+def _render_delta_df(
+    base: DatabaseSchema, target: DatabaseSchema, diff: dict[str, object]
+) -> str:
+    tables_diff = diff["tables"]
+    sequences_diff = diff["sequences"]
+    if not isinstance(tables_diff, dict) or not isinstance(sequences_diff, dict):
+        raise ValueError("Could not render a delta .df from the schema comparison.")
+
+    add_tables: list[str] = []
+    add_fields: list[str] = []
+    add_indexes: list[str] = []
+    updates: list[str] = []
+    drop_indexes: list[str] = []
+    drop_fields: list[str] = []
+    drop_sequences: list[str] = []
+    drop_tables: list[str] = []
+
+    added_table_names = set(tables_diff["added"])
+    removed_table_names = set(tables_diff["removed"])
+    for table_name in sorted(added_table_names, key=_sort_key):
+        table = target.tables[table_name]
+        add_tables.append(_definition(target, ("table", table.name)))
+        add_fields.extend(
+            _definition(target, ("field", table.name, field.name))
+            for field in sorted(table.fields, key=lambda item: _sort_key(item.name))
+        )
+        add_indexes.extend(
+            _definition(target, ("index", table.name, index.name))
+            for index in sorted(table.indexes, key=lambda item: _sort_key(item.name))
+        )
+
+    for table_name in sorted(removed_table_names, key=_sort_key):
+        drop_tables.append(f'DROP TABLE "{table_name}"')
+
+    modified_tables = tables_diff["modified"]
+    if not isinstance(modified_tables, list):
+        raise ValueError("Could not render a delta .df from the schema comparison.")
+    primary_index_updates: list[str] = []
+    for table_diff in modified_tables:
+        if not isinstance(table_diff, dict):
+            continue
+        table_name = table_diff["name"]
+        old_table = base.tables[table_name]
+        new_table = target.tables[table_name]
+
+        table_changes = table_diff.get("changes", {})
+        if table_changes:
+            if not isinstance(table_changes, dict):
+                raise ValueError(f"Could not render table changes for '{table_name}'.")
+            properties: list[str] = []
+            for attribute, property_name in (
+                ("description", "DESCRIPTION"),
+                ("dump_name", "DUMP-NAME"),
+            ):
+                if attribute in table_changes:
+                    properties.append(
+                        _updated_property(
+                            target,
+                            ("table", table_name),
+                            property_name,
+                        )
+                    )
+            if "triggers" in table_changes:
+                removed_triggers = set(old_table.triggers) - set(new_table.triggers)
+                if removed_triggers:
+                    raise ValueError(
+                        f"Delta export does not support removing table triggers on '{table_name}'."
+                    )
+                properties.extend(
+                    line.strip()
+                    for line in _definition(target, ("table", table_name)).splitlines()
+                    if line.lstrip().startswith("TABLE-TRIGGER ")
+                )
+            if properties:
+                updates.append(f'UPDATE TABLE "{table_name}"\n' + "\n".join(f"  {line}" for line in properties))
+
+        fields_diff = table_diff["fields"]
+        if not isinstance(fields_diff, dict):
+            raise ValueError(f"Could not render field changes for '{table_name}'.")
+        for field_name in sorted(fields_diff["added"], key=_sort_key):
+            add_fields.append(_definition(target, ("field", table_name, field_name)))
+        for field_name in sorted(fields_diff["removed"], key=_sort_key):
+            drop_fields.append(f'DROP FIELD "{field_name}" OF "{table_name}"')
+        for field_diff in fields_diff["modified"]:
+            updates.append(_render_field_update(target, table_name, field_diff))
+
+        indexes_diff = table_diff["indexes"]
+        if not isinstance(indexes_diff, dict):
+            raise ValueError(f"Could not render index changes for '{table_name}'.")
+        for index_name in sorted(indexes_diff["added"], key=_sort_key):
+            add_indexes.append(_definition(target, ("index", table_name, index_name)))
+        for index_name in sorted(indexes_diff["removed"], key=_sort_key):
+            drop_indexes.append(f'DROP INDEX "{index_name}" ON "{table_name}"')
+        for index_diff in indexes_diff["modified"]:
+            index_name = index_diff["name"]
+            drop_indexes.append(f'DROP INDEX "{index_name}" ON "{table_name}"')
+            add_indexes.append(_definition(target, ("index", table_name, index_name)))
+
+        old_primary = next((index.name for index in old_table.indexes if index.primary), None)
+        new_primary = next((index.name for index in new_table.indexes if index.primary), None)
+        if old_primary != new_primary and new_primary is not None:
+            primary_index_updates.append(
+                f'UPDATE PRIMARY INDEX "{new_primary}" ON "{table_name}"'
+            )
+
+    for sequence_name in sorted(sequences_diff["added"], key=_sort_key):
+        add_sequences = _definition(target, ("sequence", sequence_name))
+        updates.append(add_sequences)
+    for sequence_diff in sequences_diff["modified"]:
+        updates.append(_render_sequence_update(target, sequence_diff))
+    for sequence_name in sorted(sequences_diff["removed"], key=_sort_key):
+        drop_sequences.append(f'DROP SEQUENCE "{sequence_name}"')
+
+    blocks = [
+        *add_tables,
+        *add_fields,
+        *updates,
+        *drop_indexes,
+        *add_indexes,
+        *primary_index_updates,
+        *drop_fields,
+        *drop_sequences,
+        *drop_tables,
+    ]
+    definition_data = ("\r\n\r\n".join(blocks) + "\r\n\r\n.\r\n").replace(
+        "\r\n", "\n"
+    ).replace("\n", "\r\n")
+    footer_length = len(definition_data.encode("utf-8"))
+    return f"{definition_data}PSC\r\ncpstream=UTF-8\r\n.\r\n{footer_length:010d}\r\n"
+
+
+def _render_field_update(
+    target: DatabaseSchema, table_name: str, field_diff: dict[str, object]
+) -> str:
+    field_name = str(field_diff["name"])
+    field = next(field for field in target.tables[table_name].fields if field.name == field_name)
+    changes = field_diff["changes"]
+    if not isinstance(changes, dict):
+        raise ValueError(f"Could not render field changes for '{field_name}'.")
+    header = f'UPDATE FIELD "{field_name}" OF "{table_name}"'
+    if "data_type" in changes:
+        header += f" AS {field.data_type}"
+    properties = [
+        _updated_property(target, ("field", table_name, field_name), property_name, field.mandatory)
+        for attribute, property_name in (
+            ("format", "FORMAT"),
+            ("initial", "INITIAL"),
+            ("validation_expression", "VALEXP"),
+            ("validation_message", "VALMSG"),
+            ("label", "LABEL"),
+            ("help_text", "HELP"),
+            ("mandatory", "MANDATORY"),
+        )
+        if attribute in changes
+    ]
+    return "\n".join([header, *(f"  {property_line}" for property_line in properties)])
+
+
+def _render_sequence_update(
+    target: DatabaseSchema, sequence_diff: dict[str, object]
+) -> str:
+    sequence_name = str(sequence_diff["name"])
+    changes = sequence_diff["changes"]
+    if not isinstance(changes, dict):
+        raise ValueError(f"Could not render sequence changes for '{sequence_name}'.")
+    properties = [
+        _updated_property(target, ("sequence", sequence_name), property_name)
+        for attribute, property_name in (
+            ("initial", "INITIAL"),
+            ("increment", "INCREMENT"),
+            ("minimum", "MIN-VAL"),
+            ("cycle_on_limit", "CYCLE-ON-LIMIT"),
+        )
+        if attribute in changes
+    ]
+    return "\n".join(
+        [f'UPDATE SEQUENCE "{sequence_name}"', *(f"  {property_line}" for property_line in properties)]
+    )
+
+
+def _definition(schema: DatabaseSchema, key: tuple[str, ...]) -> str:
+    try:
+        return schema.definitions[key].replace("\r\n", "\n").replace("\n", "\r\n")
+    except KeyError as error:
+        raise ValueError(f"Could not find the source definition for {key!r}.") from error
+
+
+def _updated_property(
+    schema: DatabaseSchema,
+    key: tuple[str, ...],
+    property_name: str,
+    mandatory: bool | None = None,
+) -> str:
+    if property_name == "MANDATORY":
+        return "MANDATORY" if mandatory else "MANDATORY no"
+    for line in _definition(schema, key).splitlines():
+        stripped = line.strip()
+        if stripped.casefold() == property_name.casefold() or stripped.casefold().startswith(
+            f"{property_name.casefold()} "
+        ):
+            return stripped
+    return f"{property_name} ?"
 
 
 def _diff_table(

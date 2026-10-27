@@ -75,6 +75,7 @@ class DatabaseSchema:
     schema_file: Path
     tables: dict[str, Table] = field(default_factory=dict)
     sequences: list[Sequence] = field(default_factory=list)
+    definitions: dict[tuple[str, ...], str] = field(default_factory=dict)
 
     def table(self, table_name: str) -> Table:
         for name, table in self.tables.items():
@@ -468,6 +469,7 @@ def _parse_df_text(database_name: str, schema_path: Path, text: str) -> Database
                 triggers=re.findall(r'TABLE-TRIGGER "[^"]+"[^\n]*PROCEDURE "([^"]+)"', block),
             )
             schema.tables[table.name] = table
+            schema.definitions[("table", table.name)] = block.strip()
         elif match := re.search(r'^ADD FIELD "([^"]+)" OF "([^"]+)" AS (\w+)', block, re.MULTILINE):
             field_definition = Field(
                 name=match.group(1),
@@ -483,6 +485,7 @@ def _parse_df_text(database_name: str, schema_path: Path, text: str) -> Database
             )
             if field_definition.table in schema.tables:
                 schema.tables[field_definition.table].fields.append(field_definition)
+                schema.definitions[("field", field_definition.table, field_definition.name)] = block.strip()
         elif match := re.search(r'^ADD INDEX "([^"]+)" ON "([^"]+)"', block, re.MULTILINE):
             index = Index(
                 name=match.group(1),
@@ -493,16 +496,19 @@ def _parse_df_text(database_name: str, schema_path: Path, text: str) -> Database
             )
             if index.table in schema.tables:
                 schema.tables[index.table].indexes.append(index)
+                schema.definitions[("index", index.table, index.name)] = block.strip()
         elif match := re.search(r'^ADD SEQUENCE "([^"]+)"', block, re.MULTILINE):
+            sequence_name = match.group(1)
             schema.sequences.append(
                 Sequence(
-                    name=match.group(1),
+                    name=sequence_name,
                     initial=_value_property(block, "INITIAL"),
                     increment=_value_property(block, "INCREMENT"),
                     minimum=_value_property(block, "MIN-VAL"),
                     cycle_on_limit=bool(re.search(r'CYCLE-ON-LIMIT yes', block)),
                 )
             )
+            schema.definitions[("sequence", sequence_name)] = block.strip()
     return schema
 
 
