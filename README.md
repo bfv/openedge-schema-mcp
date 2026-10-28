@@ -2,7 +2,7 @@
 
 An MCP server that lets AI assistants explore OpenEdge database schemas and maintain a relationship catalog. It reads `.df` exports referenced by `openedge-project.json`; it never connects to a database or returns connection strings.
 
-## How a project uses it
+## 0. How a project uses it
 
 The server is a separate Python process. It is not added to the OpenEdge `PROPATH`, and it does not connect to the database. VS Code starts the server and passes it the path to the OpenEdge project file. The server then reads the schema exports and relationship catalog from that project.
 
@@ -18,7 +18,7 @@ my-openedge-project/
 │   └── sports2020.json                  # Relationship catalog
 ```
 
-### 1. Configure schema file locations
+## 1. Configure schema file locations
 
 The Riverside OpenEdge ABL extension is assumed here.<br/>
 Export a `.df` file for each database and set its location in the database's `schemaFile` property. There is no global schema-directory setting: every database can have its own schema file location.<br/>
@@ -40,7 +40,7 @@ Export a `.df` file for each database and set its location in the database's `sc
 
 `OPENEDGE_PROJECT_FILE` in `.vscode/mcp.json` selects the `openedge-project.json` file the MCP server reads. The `schemaFile` values inside that selected project file determine the schema locations.
 
-### 2. Configure relationships
+## 2. Configure relationships
 
 OpenEdge schemas do not contain formal foreign keys. By default, store reviewed relationships in `schema-relations/<database>.json`:
 
@@ -90,7 +90,7 @@ Set `schemaRelationsDirectory` in `openedge-project.json` to use another directo
 
 `OPENEDGE_SCHEMA_RELATIONS_DIR` overrides this setting, which is useful when each workstation needs a different relationship catalog.
 
-### 3. Compare schema versions
+## 3. Compare schema versions
 
 Use `compare_schema_versions` to compare two `.df` exports or the same workspace-relative `.df` file across two Git references. It parses schema exports only; it does not connect to a database or change the working tree.
 
@@ -125,7 +125,7 @@ compare_schema_versions(
 )
 ```
 
-### 4. Configure VS Code from GitHub
+## 4. Configure VS Code from GitHub
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create `.vscode/mcp.json` in the project root:
 
@@ -148,9 +148,46 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and create
 }
 ```
 
-`OPENEDGE_SCHEMA_RELATIONS_DIR` sets the directory where `add_relationship` creates and updates `<database>.json` files. It overrides `schemaRelationsDirectory` in `openedge-project.json`; remove this environment variable when the project-file setting should control the catalog location. Replace `vX.Y.Z` with a published release tag. Pushing a `vX.Y.Z` tag starts the release workflow, which validates the tag, runs the test suite, and creates the GitHub release. `uvx` downloads and caches the source from that exact tag. Restart the MCP server from the VS Code MCP view after saving this file.
+### 4.1 Use Python directly (without `uv/uvx`)
 
-To upgrade, change `@vX.Y.Z` to the required release tag, then restart the MCP server. Do not point production projects at `main`, because that would allow unreviewed server changes to alter the project setup.
+Install Python 3.12 or newer and Git. Create a virtual environment in the project root and install the release tag with `pip`; Git is required by `pip` to fetch the repository, and `pip` installs the package dependencies automatically.
+
+On Windows, run:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install "git+https://github.com/bfv/openedge-schema-mcp.git@vX.Y.Z#subdirectory=openedge-schema-mcp"
+```
+
+On macOS or Linux, run:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install "git+https://github.com/bfv/openedge-schema-mcp.git@vX.Y.Z#subdirectory=openedge-schema-mcp"
+```
+
+Replace `vX.Y.Z` with a published release tag. Then configure `.vscode/mcp.json` to run the virtual environment's Python directly. On Windows:
+
+```json
+{
+  "servers": {
+    "openedge-schema": {
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "openedge_schema_mcp.server"],
+      "env": {
+        "OPENEDGE_PROJECT_FILE": "${workspaceFolder}/openedge-project.json",
+        "OPENEDGE_SCHEMA_RELATIONS_DIR": "${workspaceFolder}/schema-relations"
+      }
+    }
+  }
+}
+```
+
+On macOS or Linux, set `command` to `${workspaceFolder}/.venv/bin/python`. Restart the MCP server from the VS Code MCP view after saving the configuration. To upgrade, install a different release tag and restart the server.
+
+`OPENEDGE_SCHEMA_RELATIONS_DIR` sets the directory where `add_relationship` creates and updates `<database>.json` files. It overrides `schemaRelationsDirectory` in `openedge-project.json`; remove this environment variable when the project-file setting should control the catalog location. Replace `vX.Y.Z` with a published release tag. Pushing a `vX.Y.Z` tag starts the release workflow, which validates the tag, runs the test suite, and creates the GitHub release. For the `uvx` configuration in section 4, `uvx` downloads and caches the source from that exact tag. Restart the MCP server from the VS Code MCP view after saving this file.
+
+To upgrade a `uvx` installation, change `@vX.Y.Z` to the required release tag, then restart the MCP server. For a Python installation, install the required release tag again as shown in section 4.1. Do not point production projects at `main`, because that would allow unreviewed server changes to alter the project setup.
 
 ### Local checkout alternative
 
